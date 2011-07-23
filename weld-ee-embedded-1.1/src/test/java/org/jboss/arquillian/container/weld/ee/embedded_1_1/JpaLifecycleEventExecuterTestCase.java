@@ -16,6 +16,7 @@ import org.jboss.shrinkwrap.api.Archive;
 import org.jboss.shrinkwrap.api.ArchivePaths;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
+import org.jboss.shrinkwrap.api.spec.WebArchive;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -34,7 +35,9 @@ public class JpaLifecycleEventExecuterTestCase {
 	public static Archive<?> createTestArchive()
 			throws IllegalArgumentException, IOException {
 		return ShrinkWrap
-				.create(JavaArchive.class)
+				.create(WebArchive.class,
+						JpaLifecycleEventExecuterTestCase.class.getSimpleName()
+								+ ".war")
 				.addAsManifestResource(
 						new File(
 								"src/test/resources/META-INF/persistence-test.xml"),
