@@ -57,7 +57,7 @@ public class JpaLifecycleEventExecuterTestCase {
 		entityManager.getTransaction().commit();
 
 		Dog retrievedDog = (Dog) entityManager
-				.createQuery("FROM Dog where name = :name")
+				.createQuery("SELECT d FROM Dog d WHERE d.name = :name")
 				.setParameter("name", "Sega").getResultList().get(0);
 		assertEquals(
 				"Created and persisted dog should be the same as retrieved dog.",
