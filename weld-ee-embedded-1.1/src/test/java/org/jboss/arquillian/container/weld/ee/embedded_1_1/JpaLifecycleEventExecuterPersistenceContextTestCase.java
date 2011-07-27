@@ -8,6 +8,7 @@ import java.io.IOException;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
+import javax.persistence.PersistenceException;
 
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.container.weld.ee.embedded_1_1.entities.Dog;
@@ -43,7 +44,9 @@ public class JpaLifecycleEventExecuterPersistenceContextTestCase {
 						new File(
 								"src/test/resources/META-INF/persistence-test.xml"),
 						ArchivePaths.create("persistence.xml"))
-				.addClasses(Dog.class, JpaLifecycleEventExecuterPersistenceContextTestCase.class);
+				.addClasses(
+						Dog.class,
+						JpaLifecycleEventExecuterPersistenceContextTestCase.class);
 	}
 
 	@Test
@@ -65,14 +68,12 @@ public class JpaLifecycleEventExecuterPersistenceContextTestCase {
 
 	@Test
 	public void shouldPersistAndRetrieveEntityWithFirstEntityManager() {
-		entityManager.getTransaction().begin();
-		Dog dog = new Dog("Sega");
-		entityManager.persist(dog);
-		entityManager.getTransaction().commit();
+		String dogName = "Sega";
+		Dog dog = createDog(entityManager, dogName);
 
 		Dog retrievedDog = (Dog) entityManager
 				.createQuery("SELECT d FROM Dog d WHERE d.name = :name")
-				.setParameter("name", "Sega").getResultList().get(0);
+				.setParameter("name", dogName).getResultList().get(0);
 		assertEquals(
 				"Created and persisted dog should be the same as retrieved dog.",
 				dog, retrievedDog);
@@ -80,19 +81,24 @@ public class JpaLifecycleEventExecuterPersistenceContextTestCase {
 
 	@Test
 	public void shouldPersistAndRetrieveEntityWithSecondEntityManager() {
-		entityManager2.getTransaction().begin();
-		Dog dog = new Dog("Figa");
-		entityManager2.persist(dog);
-		entityManager2.getTransaction().commit();
+		String dogName = "Figa";
+		Dog dog = createDog(entityManager2, dogName);
 
 		Dog retrievedDog = (Dog) entityManager2
 				.createQuery("SELECT d FROM Dog d WHERE d.name = :name")
-				.setParameter("name", "Figa").getResultList().get(0);
+				.setParameter("name", dogName).getResultList().get(0);
 		assertEquals(
 				"Created and persisted dog should be the same as retrieved dog.",
 				dog, retrievedDog);
 	}
-	
+
+	@Test(expected = PersistenceException.class)
+	public void shouldNotAllowForDuplicateRowInSameEntityManager() {
+		String dogName = "Sega";
+		createDog(entityManager, dogName);
+		createDog(entityManager2, dogName);
+	}
+
 	@After
 	public void cleanup() {
 		entityManager.getTransaction().begin();
@@ -102,5 +108,13 @@ public class JpaLifecycleEventExecuterPersistenceContextTestCase {
 		entityManager2.getTransaction().begin();
 		entityManager2.createQuery("DELETE FROM Dog").executeUpdate();
 		entityManager2.getTransaction().commit();
+	}
+
+	private Dog createDog(EntityManager entityManager, String name) {
+		entityManager.getTransaction().begin();
+		Dog dog = new Dog(name);
+		entityManager.persist(dog);
+		entityManager.getTransaction().commit();
+		return dog;
 	}
 }
