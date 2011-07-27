@@ -24,23 +24,33 @@ import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
 import javax.persistence.PersistenceContext;
+import javax.persistence.PersistenceUnit;
 
 import org.jboss.weld.injection.spi.JpaInjectionServices;
 
 public class MockJpaInjectionServices implements JpaInjectionServices
 {
 	private Map<String, EntityManager> entityManagersByUnitName = new HashMap<String, EntityManager>();
+	private Map<String, EntityManagerFactory> entityManagerFactoriesByUnitName = new HashMap<String, EntityManagerFactory>();
    
    public EntityManager resolvePersistenceContext(InjectionPoint injectionPoint)
    {
-	   String persistenceUnitName = getPersistenceUnitName(injectionPoint);
-		if (persistenceUnitNotYetInitialised(persistenceUnitName)) {
-			initialiseEntityManager(persistenceUnitName);
-		}
-       return entityManagersByUnitName.get(persistenceUnitName);
+	   String persistenceUnitName = getPersistenceUnitNameFromPersistenceContext(injectionPoint);
+		return getEntityManagerByPersistenceUnitName(persistenceUnitName);
+   }
+   
+   public EntityManagerFactory resolvePersistenceUnit(InjectionPoint injectionPoint)
+   {
+	   String persistenceUnitName = getPersistenceUnitNameFromPersistenceUnit(injectionPoint);
+		return getEntityManagerFactoryByPersistenceUnitName(persistenceUnitName);
+   }
+   
+   public void cleanup() {
+	   closeAndClearEntityManagers();
+	   closeAndClearEntityManagerFactories();
    }
 
-   private String getPersistenceUnitName(InjectionPoint injectionPoint) {
+   private String getPersistenceUnitNameFromPersistenceContext(InjectionPoint injectionPoint) {
 	   String nameOnAnnotation = injectionPoint.getAnnotated().getAnnotation(PersistenceContext.class).unitName();
 	   if (isEmpty(nameOnAnnotation)) {
 		   return null;
@@ -49,31 +59,67 @@ public class MockJpaInjectionServices implements JpaInjectionServices
 	   }
    }
 
+   private String getPersistenceUnitNameFromPersistenceUnit(InjectionPoint injectionPoint) {
+	   String nameOnAnnotation = injectionPoint.getAnnotated().getAnnotation(PersistenceUnit.class).unitName();
+	   if (isEmpty(nameOnAnnotation)) {
+		   return null;
+	   } else {
+		   return nameOnAnnotation;
+	   }
+   }
+
+	private EntityManager getEntityManagerByPersistenceUnitName(
+			String persistenceUnitName) {
+		if (entityManagerNotYetInitialised(persistenceUnitName)) {
+			initialiseEntityManager(persistenceUnitName);
+		}
+	      return entityManagersByUnitName.get(persistenceUnitName);
+	}
+
+	private EntityManagerFactory getEntityManagerFactoryByPersistenceUnitName(
+			String persistenceUnitName) {
+		if (entityManagerFactoryNotYetInitialised(persistenceUnitName)) {
+			initialiseEntityManagerFactory(persistenceUnitName);
+		}
+	      return entityManagerFactoriesByUnitName.get(persistenceUnitName);
+	}
+
+	private boolean entityManagerNotYetInitialised(String persistenceUnitName) {
+		return !entityManagersByUnitName.containsKey(persistenceUnitName);
+	}
+
+	private boolean entityManagerFactoryNotYetInitialised(String persistenceUnitName) {
+		return !entityManagerFactoriesByUnitName.containsKey(persistenceUnitName);
+	}
+
 	private void initialiseEntityManager(String persistenceUnitName) {
-		EntityManagerFactory entityManagerFactory = Persistence
-				.createEntityManagerFactory(persistenceUnitName);
+		EntityManagerFactory entityManagerFactory = getEntityManagerFactoryByPersistenceUnitName(persistenceUnitName);
 		EntityManager entityManager = entityManagerFactory.createEntityManager();
 		entityManagersByUnitName.put(persistenceUnitName, entityManager);
 	}
 
-	private boolean persistenceUnitNotYetInitialised(String persistenceUnitName) {
-		return !entityManagersByUnitName.containsKey(persistenceUnitName);
+	private void initialiseEntityManagerFactory(String persistenceUnitName) {
+		EntityManagerFactory entityManagerFactory = Persistence
+				.createEntityManagerFactory(persistenceUnitName);
+		entityManagerFactoriesByUnitName.put(persistenceUnitName, entityManagerFactory);
 	}
 	
 	private boolean isEmpty(String nameOnAnnotation) {
 		return nameOnAnnotation == null || nameOnAnnotation.equals("");
 	}
-   
-   public EntityManagerFactory resolvePersistenceUnit(InjectionPoint injectionPoint)
-   {
-      return null;
-   }
-   
-   public void cleanup() {
-	   for (String persistenceUnitName : entityManagersByUnitName.keySet()) {
-		   entityManagersByUnitName.get(persistenceUnitName).close();
-	   }
-	   entityManagersByUnitName.clear();
-   }
+
+	private void closeAndClearEntityManagerFactories() {
+		for (String persistenceUnitName : entityManagerFactoriesByUnitName.keySet()) {
+			   entityManagerFactoriesByUnitName.get(persistenceUnitName).close();
+		   }
+		entityManagerFactoriesByUnitName.clear();
+	}
+	
+	private void closeAndClearEntityManagers() {
+		for (String persistenceUnitName : entityManagersByUnitName.keySet()) {
+			   entityManagersByUnitName.get(persistenceUnitName).close();
+		   }
+		   entityManagersByUnitName.clear();
+	}
 
 }
