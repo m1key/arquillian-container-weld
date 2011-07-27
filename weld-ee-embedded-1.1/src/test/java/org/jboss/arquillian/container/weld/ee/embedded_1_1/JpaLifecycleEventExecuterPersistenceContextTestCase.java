@@ -25,10 +25,13 @@ import org.junit.runner.RunWith;
  * 
  */
 @RunWith(Arquillian.class)
-public class JpaLifecycleEventExecuterTestCase {
+public class JpaLifecycleEventExecuterPersistenceContextTestCase {
 
 	@PersistenceContext
 	private EntityManager entityManager;
+
+	@PersistenceContext
+	private EntityManager entityManager2;
 
 	@Deployment
 	public static Archive<?> createTestArchive()
@@ -39,7 +42,7 @@ public class JpaLifecycleEventExecuterTestCase {
 						new File(
 								"src/test/resources/META-INF/persistence-test.xml"),
 						ArchivePaths.create("persistence.xml"))
-				.addClasses(Dog.class, JpaLifecycleEventExecuterTestCase.class);
+				.addClasses(Dog.class, JpaLifecycleEventExecuterPersistenceContextTestCase.class);
 	}
 
 	@Test
@@ -47,10 +50,20 @@ public class JpaLifecycleEventExecuterTestCase {
 		assertNotNull(
 				"Entity manager injected via @PersistenceContext should not be null.",
 				entityManager);
+		assertNotNull(
+				"Second entity manager injected via @PersistenceContext should not be null.",
+				entityManager2);
 	}
 
 	@Test
-	public void shouldPersistAndRetrieveEntity() {
+	public void twoEntityManagersWithNoPersistenceUnitNameShouldBeTheSame() {
+		assertEquals(
+				"Two entity managers with no persistence unit name specified"
+						+ " should be the same.", entityManager, entityManager2);
+	}
+
+	@Test
+	public void shouldPersistAndRetrieveEntityWithFirstEntityManager() {
 		entityManager.getTransaction().begin();
 		Dog dog = new Dog("Sega");
 		entityManager.persist(dog);
@@ -59,6 +72,21 @@ public class JpaLifecycleEventExecuterTestCase {
 		Dog retrievedDog = (Dog) entityManager
 				.createQuery("SELECT d FROM Dog d WHERE d.name = :name")
 				.setParameter("name", "Sega").getResultList().get(0);
+		assertEquals(
+				"Created and persisted dog should be the same as retrieved dog.",
+				dog, retrievedDog);
+	}
+
+	@Test
+	public void shouldPersistAndRetrieveEntityWithSecondEntityManager() {
+		entityManager2.getTransaction().begin();
+		Dog dog = new Dog("Figa");
+		entityManager2.persist(dog);
+		entityManager2.getTransaction().commit();
+
+		Dog retrievedDog = (Dog) entityManager2
+				.createQuery("SELECT d FROM Dog d WHERE d.name = :name")
+				.setParameter("name", "Figa").getResultList().get(0);
 		assertEquals(
 				"Created and persisted dog should be the same as retrieved dog.",
 				dog, retrievedDog);
