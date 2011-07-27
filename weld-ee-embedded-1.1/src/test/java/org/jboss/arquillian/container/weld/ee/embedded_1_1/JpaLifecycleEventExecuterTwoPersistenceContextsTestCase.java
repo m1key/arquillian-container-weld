@@ -64,14 +64,12 @@ public class JpaLifecycleEventExecuterTwoPersistenceContextsTestCase {
 
 	@Test
 	public void shouldPersistAndRetrieveEntityWithFirstEntityManager() {
-		entityManager.getTransaction().begin();
-		Dog dog = new Dog("Sega");
-		entityManager.persist(dog);
-		entityManager.getTransaction().commit();
+		String dogName = "Sega";
+		Dog dog = createDog(entityManager, dogName);
 
 		Dog retrievedDog = (Dog) entityManager
 				.createQuery("SELECT d FROM Dog d WHERE d.name = :name")
-				.setParameter("name", "Sega").getResultList().get(0);
+				.setParameter("name", dogName).getResultList().get(0);
 		assertEquals(
 				"Created and persisted dog should be the same as retrieved dog.",
 				dog, retrievedDog);
@@ -79,19 +77,23 @@ public class JpaLifecycleEventExecuterTwoPersistenceContextsTestCase {
 
 	@Test
 	public void shouldPersistAndRetrieveEntityWithSecondEntityManager() {
-		entityManager2.getTransaction().begin();
-		Dog dog = new Dog("Figa");
-		entityManager2.persist(dog);
-		entityManager2.getTransaction().commit();
+		String dogName = "Figa";
+		Dog dog = createDog(entityManager2, dogName);
 
 		Dog retrievedDog = (Dog) entityManager2
 				.createQuery("SELECT d FROM Dog d WHERE d.name = :name")
-				.setParameter("name", "Figa").getResultList().get(0);
+				.setParameter("name", dogName).getResultList().get(0);
 		assertEquals(
 				"Created and persisted dog should be the same as retrieved dog.",
 				dog, retrievedDog);
 	}
-	
+
+	@Test
+	public void shouldAllowToCreateTwoIdenticalDogsInDifferentEntityManagers() {
+		createDog(entityManager, "Sega");
+		createDog(entityManager2, "Sega");
+	}
+
 	@After
 	public void cleanup() {
 		entityManager.getTransaction().begin();
@@ -101,6 +103,14 @@ public class JpaLifecycleEventExecuterTwoPersistenceContextsTestCase {
 		entityManager2.getTransaction().begin();
 		entityManager2.createQuery("DELETE FROM Dog").executeUpdate();
 		entityManager2.getTransaction().commit();
+	}
+
+	private Dog createDog(EntityManager entityManager, String name) {
+		entityManager.getTransaction().begin();
+		Dog dog = new Dog(name);
+		entityManager.persist(dog);
+		entityManager.getTransaction().commit();
+		return dog;
 	}
 
 }
