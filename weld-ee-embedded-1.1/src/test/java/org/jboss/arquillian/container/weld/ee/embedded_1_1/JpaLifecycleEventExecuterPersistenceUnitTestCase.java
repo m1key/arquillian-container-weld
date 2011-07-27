@@ -16,11 +16,13 @@
  */
 package org.jboss.arquillian.container.weld.ee.embedded_1_1;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import java.io.File;
 import java.io.IOException;
 
+import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.PersistenceUnit;
 
@@ -31,6 +33,7 @@ import org.jboss.shrinkwrap.api.Archive;
 import org.jboss.shrinkwrap.api.ArchivePaths;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
+import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -69,6 +72,51 @@ public class JpaLifecycleEventExecuterPersistenceUnitTestCase {
 		assertNotNull(
 				"Second entity manager factory injected via @PersistenceUnit should not be null.",
 				entityManagerFactory2);
+	}
+
+	@Test
+	public void twoEntityManagerFactoriesWithNoPersistenceUnitNameShouldBeTheSame() {
+		assertEquals(
+				"Two entity manager factories with no persistence unit name specified"
+						+ " should be the same.", entityManagerFactory,
+				entityManagerFactory2);
+	}
+
+	@Test
+	public void shouldPersistAndRetrieveEntityWithFirstEntityManager() {
+		EntityManager entityManager = entityManagerFactory.createEntityManager();
+		
+		String dogName = "Sega";
+		Dog dog = createDog(entityManager, dogName);
+
+		Dog retrievedDog = (Dog) entityManager
+				.createQuery("SELECT d FROM Dog d WHERE d.name = :name")
+				.setParameter("name", dogName).getResultList().get(0);
+		assertEquals(
+				"Created and persisted dog should be the same as retrieved dog.",
+				dog, retrievedDog);
+	}
+
+	@After
+	public void cleanup() {
+		EntityManager entityManager = entityManagerFactory.createEntityManager();
+		EntityManager entityManager2 = entityManagerFactory2.createEntityManager();
+		
+		entityManager.getTransaction().begin();
+		entityManager.createQuery("DELETE FROM Dog").executeUpdate();
+		entityManager.getTransaction().commit();
+
+		entityManager2.getTransaction().begin();
+		entityManager2.createQuery("DELETE FROM Dog").executeUpdate();
+		entityManager2.getTransaction().commit();
+	}
+
+	private Dog createDog(EntityManager entityManager, String name) {
+		entityManager.getTransaction().begin();
+		Dog dog = new Dog(name);
+		entityManager.persist(dog);
+		entityManager.getTransaction().commit();
+		return dog;
 	}
 
 }
