@@ -24,6 +24,7 @@ import java.io.IOException;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
+import javax.persistence.PersistenceException;
 import javax.persistence.PersistenceUnit;
 
 import org.jboss.arquillian.container.test.api.Deployment;
@@ -83,9 +84,10 @@ public class JpaLifecycleEventExecuterPersistenceUnitTestCase {
 	}
 
 	@Test
-	public void shouldPersistAndRetrieveEntityWithFirstEntityManager() {
-		EntityManager entityManager = entityManagerFactory.createEntityManager();
-		
+	public void shouldPersistAndRetrieveEntityWithFirstEntityManagerFactory() {
+		EntityManager entityManager = entityManagerFactory
+				.createEntityManager();
+
 		String dogName = "Sega";
 		Dog dog = createDog(entityManager, dogName);
 
@@ -97,11 +99,41 @@ public class JpaLifecycleEventExecuterPersistenceUnitTestCase {
 				dog, retrievedDog);
 	}
 
+	@Test
+	public void shouldPersistAndRetrieveEntityWithSecondEntityManager() {
+		EntityManager entityManager2 = entityManagerFactory2
+				.createEntityManager();
+
+		String dogName = "Figa";
+		Dog dog = createDog(entityManager2, dogName);
+
+		Dog retrievedDog = (Dog) entityManager2
+				.createQuery("SELECT d FROM Dog d WHERE d.name = :name")
+				.setParameter("name", dogName).getResultList().get(0);
+		assertEquals(
+				"Created and persisted dog should be the same as retrieved dog.",
+				dog, retrievedDog);
+	}
+
+	@Test(expected = PersistenceException.class)
+	public void shouldNotAllowForDuplicateRowInSameEntityManagerFactory() {
+		EntityManager entityManager = entityManagerFactory
+				.createEntityManager();
+		EntityManager entityManager2 = entityManagerFactory2
+				.createEntityManager();
+
+		String dogName = "Sega";
+		createDog(entityManager, dogName);
+		createDog(entityManager2, dogName);
+	}
+
 	@After
 	public void cleanup() {
-		EntityManager entityManager = entityManagerFactory.createEntityManager();
-		EntityManager entityManager2 = entityManagerFactory2.createEntityManager();
-		
+		EntityManager entityManager = entityManagerFactory
+				.createEntityManager();
+		EntityManager entityManager2 = entityManagerFactory2
+				.createEntityManager();
+
 		entityManager.getTransaction().begin();
 		entityManager.createQuery("DELETE FROM Dog").executeUpdate();
 		entityManager.getTransaction().commit();
