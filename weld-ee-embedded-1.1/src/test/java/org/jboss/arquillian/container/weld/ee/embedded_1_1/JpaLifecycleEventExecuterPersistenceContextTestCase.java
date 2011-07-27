@@ -16,6 +16,7 @@ import org.jboss.shrinkwrap.api.Archive;
 import org.jboss.shrinkwrap.api.ArchivePaths;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
+import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -90,5 +91,16 @@ public class JpaLifecycleEventExecuterPersistenceContextTestCase {
 		assertEquals(
 				"Created and persisted dog should be the same as retrieved dog.",
 				dog, retrievedDog);
+	}
+	
+	@After
+	public void cleanup() {
+		entityManager.getTransaction().begin();
+		entityManager.createQuery("DELETE FROM Dog").executeUpdate();
+		entityManager.getTransaction().commit();
+
+		entityManager2.getTransaction().begin();
+		entityManager2.createQuery("DELETE FROM Dog").executeUpdate();
+		entityManager2.getTransaction().commit();
 	}
 }
