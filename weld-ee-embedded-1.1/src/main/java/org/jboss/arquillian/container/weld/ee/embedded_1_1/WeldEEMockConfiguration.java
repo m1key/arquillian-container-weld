@@ -31,6 +31,7 @@ public class WeldEEMockConfiguration implements ContainerConfiguration
     * Flag to enable the Conversation Scope outside a JSF Request 
     */
    private boolean enableConversationScope = false;
+   private boolean enableJpaInjection = false;
    
    /* (non-Javadoc)
     * @see org.jboss.arquillian.spi.client.container.ContainerConfiguration#validate()
@@ -48,5 +49,13 @@ public class WeldEEMockConfiguration implements ContainerConfiguration
    public boolean isEnableConversationScope()
    {
       return enableConversationScope;
+   }
+   
+   public void setEnableJpaInjection(boolean enableJpaInjection) {
+		this.enableJpaInjection = enableJpaInjection;
+   }
+   
+   public boolean isEnableJpaInjection() {
+		return enableJpaInjection;
    }
 }

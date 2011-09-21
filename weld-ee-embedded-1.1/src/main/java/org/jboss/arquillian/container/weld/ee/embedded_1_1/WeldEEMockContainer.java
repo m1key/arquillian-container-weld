@@ -29,6 +29,8 @@ import org.jboss.arquillian.container.spi.client.protocol.ProtocolDescription;
 import org.jboss.arquillian.container.spi.client.protocol.metadata.ProtocolMetaData;
 import org.jboss.arquillian.container.spi.context.annotation.ContainerScoped;
 import org.jboss.arquillian.container.spi.context.annotation.DeploymentScoped;
+import org.jboss.arquillian.container.weld.ee.embedded_1_1.mock.MockJpaInjectionServices;
+import org.jboss.arquillian.container.weld.ee.embedded_1_1.mock.NoopJpaInjectionServices;
 import org.jboss.arquillian.container.weld.ee.embedded_1_1.mock.TestContainer;
 import org.jboss.arquillian.core.api.InstanceProducer;
 import org.jboss.arquillian.core.api.annotation.Inject;
@@ -36,6 +38,8 @@ import org.jboss.shrinkwrap.api.Archive;
 import org.jboss.shrinkwrap.api.classloader.ShrinkWrapClassLoader;
 import org.jboss.shrinkwrap.descriptor.api.Descriptor;
 import org.jboss.weld.bootstrap.api.Bootstrap;
+import org.jboss.weld.bootstrap.spi.BeanDeploymentArchive;
+import org.jboss.weld.injection.spi.JpaInjectionServices;
 import org.jboss.weld.manager.api.WeldManager;
 
 /**
@@ -91,6 +95,16 @@ public class WeldEEMockContainer implements DeployableContainer<WeldEEMockConfig
       classLoaderManager.enable();
       
       TestContainer container = new TestContainer(findArchiveId(archive), findBeansXml(archive), findBeanClasses(archive, classLoader));
+      JpaInjectionServices jpaInjectionServices;
+      if (configuration.get().isEnableJpaInjection()) {
+    	  jpaInjectionServices = new MockJpaInjectionServices();
+      } else {
+    	  jpaInjectionServices = new NoopJpaInjectionServices();
+      }
+	  for(BeanDeploymentArchive beanArchive: container.getDeployment().getBeanDeploymentArchives()) {
+		  beanArchive.getServices().add(JpaInjectionServices.class, jpaInjectionServices);
+	  }
+      
       Bootstrap bootstrap = container.getBootstrap();
 
       contextClassLoaderManagerProducer.set(classLoaderManager);
