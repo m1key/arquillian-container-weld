@@ -88,7 +88,7 @@ public class JpaLifecycleEventExecuterPersistenceContextTestCase {
 		Dog dog = createDog(entityManager, dogName);
 
 		Dog retrievedDog = (Dog) entityManager
-				.createQuery("SELECT d FROM Dog d WHERE d.name = :name")
+				.createQuery("FROM Dog where name = :name")
 				.setParameter("name", dogName).getResultList().get(0);
 		assertEquals(
 				"Created and persisted dog should be the same as retrieved dog.",
@@ -101,7 +101,7 @@ public class JpaLifecycleEventExecuterPersistenceContextTestCase {
 		Dog dog = createDog(entityManager2, dogName);
 
 		Dog retrievedDog = (Dog) entityManager2
-				.createQuery("SELECT d FROM Dog d WHERE d.name = :name")
+				.createQuery("FROM Dog where name = :name")
 				.setParameter("name", dogName).getResultList().get(0);
 		assertEquals(
 				"Created and persisted dog should be the same as retrieved dog.",
@@ -127,10 +127,15 @@ public class JpaLifecycleEventExecuterPersistenceContextTestCase {
 	}
 
 	private Dog createDog(EntityManager entityManager, String name) {
-		entityManager.getTransaction().begin();
-		Dog dog = new Dog(name);
-		entityManager.persist(dog);
-		entityManager.getTransaction().commit();
-		return dog;
+		try {
+			entityManager.getTransaction().begin();
+			Dog dog = new Dog(name);
+			entityManager.persist(dog);
+			entityManager.getTransaction().commit();
+			return dog;
+		} catch (PersistenceException e) {
+			entityManager.getTransaction().rollback();
+			throw e;
+		}
 	}
 }
